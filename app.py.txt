@@ -1,0 +1,141 @@
+# ==============================================================================
+# PROJETO: SkillQuestrack - O Ecossistema Gamificado de Talentos
+# OBJETIVO: Aplicação web interativa com Dashboard, Validação Social e IA
+# ==============================================================================
+
+import streamlit as st
+
+# 1. CONFIGURAÇÃO DA PÁGINA WEB
+st.set_page_config(page_title="SkillQuestrack", page_icon="⚡", layout="wide")
+
+# 2. BASE DE DADOS SIMULADA (Persistente na Sessão Web - Atualizada com Nível e XP)
+if "talentos" not in st.session_state:
+    st.session_state.talentos = {
+        "Carlos Silva": {
+            "competencias": {"Solda": 4, "Mecânica": 5, "Eletrónica": 2},
+            "badges": ["Parceiro Técnico", "Mestre da Caldeira"],
+            "xp": 2400,
+            "nivel": 4
+        },
+        "Ana Santos": {
+            "competencias": {"Solda": 2, "Mecânica": 2, "Eletrónica": 5},
+            "badges": ["Inovadora Digital"],
+            "xp": 3100,
+            "nivel": 5
+        },
+        "Bruno Costa": {
+            "competencias": {"Solda": 5, "Mecânica": 3, "Eletrónica": 1},
+            "badges": ["Braço Direito"],
+            "xp": 1200,
+            "nivel": 2
+        }
+    }
+
+# Cabeçalho da Aplicação com a nova identidade
+st.title("⚡ SkillQuestrack – Inteligência e Jornada de Talentos")
+st.markdown("---")
+
+# Menu de Navegação Lateral
+menu = st.sidebar.radio(
+    "Navegação SkillQuestrack",
+    ["📈 Dashboard de Gestão", "👤 Missões & Avatares", "🤝 Validação por Pares", "🤖 IA de Predição"]
+)
+
+# ------------------------------------------------------------------------------
+# PÁGINA 1: DASHBOARD DE GESTÃO (TRACKING)
+# ------------------------------------------------------------------------------
+if menu == "📈 Dashboard de Gestão":
+    st.header("📈 Painel de Tracking Analítico (RH)")
+    
+    # Cálculos das Métricas
+    total_colaboradores = len(st.session_state.talentos)
+    total_badges = sum(len(d["badges"]) for d in st.session_state.talentos.values())
+    
+    # Exibição de KPI Cards
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Quests Ativas (Operários)", f"{total_colaboradores} Hab.")
+    col2.metric("Badges Conquistados", f"{total_badges} 🏅")
+    col3.metric("Status da Planta", "Eficiência Alta", delta="Seguro")
+    
+    st.markdown("### 📊 Média de Proficiência das Quests")
+    
+    # Calcular as médias das competências
+    soma_comp = {"Solda": 0, "Mecânica": 0, "Eletrónica": 0}
+    for d in st.session_state.talentos.values():
+        for comp, nivel in d["competencias"].items():
+            soma_comp[comp] += nivel
+            
+    # Mostrar as médias com componentes de progresso visual
+    for comp, soma in soma_comp.items():
+        media = soma / total_colaboradores
+        st.write(f"**{comp}** (Média Atual: {media:.1f} / 5.0)")
+        st.progress(media / 5.0)
+        
+        # Alerta de Risco Web
+        if media < 3.0:
+            st.error(f"⚠️ Gargalo Operacional: A proficiência em '{comp}' está abaixo da meta do SkillQuestrack!")
+
+# ------------------------------------------------------------------------------
+# PÁGINA 2: MISSÕES & AVATARES
+# ------------------------------------------------------------------------------
+elif menu == "👤 Missões & Avatares":
+    st.header("👤 Jornada e Portfólio Digital do Operário")
+    st.write("Visualize o progresso das missões e o nível de evolução de cada avatar.")
+    cols = st.columns(len(st.session_state.talentos))
+    
+    for i, (nome, dados) in enumerate(st.session_state.talentos.items()):
+        with cols[i]:
+            st.info(f"### {nome}")
+            st.write(f"🌟 **Nível:** {dados['nivel']} | **XP Total:** {dados['xp']}")
+            st.write("**🏅 Badges de Quest:**")
+            for badge in dados["badges"]:
+                st.caption(f"⚡ {badge}")
+            st.write("**📐 Árvore de Habilidades:**")
+            for comp, nivel in dados["competencias"].items():
+                st.write(f"{comp}: {nivel}/5")
+                st.progress(nivel / 5)
+
+# ------------------------------------------------------------------------------
+# PÁGINA 3: VALIDAÇÃO POR PARES
+# ------------------------------------------------------------------------------
+elif menu == "🤝 Validação por Pares":
+    st.header("🤝 Validação Social (Mapeamento Invisível)")
+    st.write("Conclua uma missão dando um Badge e XP a um colega que te ajudou hoje.")
+    
+    lista = list(st.session_state.talentos.keys())
+    quem = st.selectbox("Quem completou a Quest contigo?", lista)
+    badge = st.text_input("Qual o nome do Badge/Reconhecimento?")
+    comp_alvo = st.selectbox("Habilidade Fortalecida:", ["Solda", "Mecânica", "Eletrónica"])
+    
+    # Campo de XP dinâmico para a gamificação
+    xp_adicional = st.slider("Quantidade de XP a conceder pela Quest:", 100, 500, 200, step=50)
+    
+    if st.button("Enviar Badge 🚀"):
+        if badge.strip():
+            # 1. Adiciona o Badge ao histórico do colega
+            st.session_state.talentos[quem]["badges"].append(badge)
+            
+            # 2. Sobe a competência (com limite máximo de 5)
+            if st.session_state.talentos[quem]["competencias"][comp_alvo] < 5:
+                st.session_state.talentos[quem]["competencias"][comp_alvo] += 1
+            
+            # 3. Adiciona XP e calcula o Level Up (Cada 1000 XP = 1 Nível)
+            st.session_state.talentos[quem]["xp"] += xp_adicional
+            novo_nivel = (st.session_state.talentos[quem]["xp"] // 1000) + 1
+            
+            if novo_nivel > st.session_state.talentos[quem]["nivel"]:
+                st.session_state.talentos[quem]["nivel"] = novo_nivel
+                st.toast(f"🎉 {quem} SUBIU DE NÍVEL! Agora é Nível {novo_nivel}!", icon="🔥")
+                
+            st.balloons()
+            st.success(f"Sucesso! O SkillQuestrack computou o Badge e +{xp_adicional} XP para {quem}.")
+        else:
+            st.error("Por favor, digite o nome do Badge antes de enviar para computar os pontos de XP!")
+
+# ------------------------------------------------------------------------------
+# PÁGINA 4: IA DE PREDIÇÃO (Apenas para não quebrar o menu)
+# ------------------------------------------------------------------------------
+elif menu == "🤖 IA de Predição":
+    st.header("🤖 Inteligência Artificial de Predição")
+    st.write("Módulo de IA para mapear gargalos futuros de produção com base nas competências atuais.")
+    st.warning("Módulo em desenvolvimento para a próxima sprint da empresa parceira.")
